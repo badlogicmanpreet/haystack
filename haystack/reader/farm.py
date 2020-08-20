@@ -406,10 +406,13 @@ class FARMReader(BaseReader):
                 logger.error(f"Label does not contain a document_id")
                 continue
             aggregated_per_doc[label.document_id].append(label)
+        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+        aggregated_per_doc = {k: v[:6] for k, v in aggregated_per_doc.items()}
 
         # Create squad style dicts
         d: Dict[str, Any] = {}
-        for doc_id in aggregated_per_doc.keys():
+        all_doc_ids = [x.id for x in document_store.get_all_documents(doc_index)]
+        for doc_id in all_doc_ids:
             doc = document_store.get_document_by_id(doc_id, index=doc_index)
             if not doc:
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
@@ -419,21 +422,28 @@ class FARMReader(BaseReader):
             }
             # get all questions / answers
             aggregated_per_question: Dict[str, Any] = defaultdict(list)
-            for label in aggregated_per_doc[doc_id]:
-                # add to existing answers
-                if label.question in aggregated_per_question.keys():
-                    aggregated_per_question[label.question]["answers"].append({
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc})
-                # create new one
-                else:
-                    aggregated_per_question[label.question] = {
-                        "id": str(hash(str(doc_id)+label.question)),
-                        "question": label.question,
-                        "answers": [{
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc}]
-                    }
+            if doc_id in aggregated_per_doc:
+                for label in aggregated_per_doc[doc_id]:
+                    # add to existing answers
+                    if label.question in aggregated_per_question.keys():
+                        aggregated_per_question[label.question]["answers"].append({
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc})
+                    # create new one
+                    else:
+                        aggregated_per_question[label.question] = {
+                            "id": str(hash(str(doc_id)+label.question)),
+                            "question": label.question,
+                            "answers": [{
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc}]
+                        }
+            else:
+                aggregated_per_question[label.question] = {
+                    "id": str(hash(str(doc_id) + label.question)),
+                    "question": label.question,
+                    "answers": []
+                }
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
 
