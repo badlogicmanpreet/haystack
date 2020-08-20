@@ -438,6 +438,8 @@ class FARMReader(BaseReader):
                                     "text": label.answer,
                                     "answer_start": label.offset_start_in_doc}]
                         }
+            # Deals with cases where there is no corresponding label in the document_store for a given question
+            # These are assumed to be "no_answer" examples
             else:
                 aggregated_per_question[label.question] = {
                     "id": str(hash(str(doc_id) + label.question)),
