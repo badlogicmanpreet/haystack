@@ -5,6 +5,8 @@ from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_h
 from haystack.reader.farm import FARMReader
 from haystack.utils import print_answers
 from haystack.retriever.dense import DensePassageRetriever
+from haystack.indexing.file_converters.pdf import PDFToTextConverter
+from pathlib import Path
 
 
 # FAISS is a library for efficient similarity search on a cluster of dense vectors.
@@ -15,15 +17,29 @@ document_store = FAISSDocumentStore()
 
 # ## Cleaning & indexing documents
 # Let's first get some documents that we want to query
-doc_dir = "data/article_txt_got"
-s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
-fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+# doc_dir = "data/article_txt_got"
+# s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+# fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-# convert files to dicts containing documents that can be indexed to our datastore
-dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+# # convert files to dicts containing documents that can be indexed to our datastore
+# dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
-# Now, let's write the docs to our DB.
+# # Now, let's write the docs to our DB.
+# document_store.write_documents(dicts)
+
+print('starting conversion...')
+converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
+doc_dir = "/Users/manpreet.singh/git/deeplearning/deepmind/haystack/dataset/postgres"
+dicts = []
+for file in Path(doc_dir).iterdir():
+    pages = converter.extract_pages(file_path=file)
+    print('pages extracted...')
+    text = "\n".join([str(i) for i in pages])
+    dicts.append({"name": file.name, "text": text})
+
+print('Conversion done...')
 document_store.write_documents(dicts)
+print('Doc written...')
 
 ### Retriever
 retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
@@ -48,7 +64,7 @@ finder = Finder(reader, retriever)
 ### Voilà! Ask a question!
 # You can configure how many candidates the reader and retriever shall return
 # The higher top_k_retriever, the better (but also the slower) your answers.
-prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+prediction = finder.get_answers(question="What is PostgreSQL?", top_k_retriever=10, top_k_reader=5)
 
 
 # prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)

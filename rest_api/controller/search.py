@@ -22,6 +22,7 @@ from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever
 from haystack.retriever.dense import EmbeddingRetriever
+from haystack.indexing.file_converters.pdf import PDFToTextConverter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,6 +46,21 @@ document_store = ElasticsearchDocumentStore(
     faq_question_field=FAQ_QUESTION_FIELD_NAME,
 )
 
+converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
+doc_dir = "/Users/manpreet.singh/git/deeplearning/deepmind/haystack/dataset/postgres"
+dicts = []
+for file in Path(doc_dir).iterdir():
+    pages = converter.extract_pages(file_path=file)
+    text = "\n".join(pages)
+    dicts.append({"name": file.name, "text": text})
+
+document_store.write_documents(dicts)
+
+# # convert files to dicts containing documents that can be indexed to our datastore
+# dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+
+# # Now, let's write the docs to our DB.
+# document_store.write_documents(dicts[:16])
 
 if RETRIEVER_TYPE == "EmbeddingRetriever":
     retriever = EmbeddingRetriever(
@@ -57,6 +73,10 @@ elif RETRIEVER_TYPE == "ElasticsearchRetriever":
     retriever = ElasticsearchRetriever(document_store=document_store)
 elif RETRIEVER_TYPE is None or RETRIEVER_TYPE == "ElasticsearchFilterOnlyRetriever":
     retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+elif RETRIEVER_TYPE == "DensePassageRetriever":
+    retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
+                                  do_lower_case=True, use_gpu=True)
+    document_store.update_embeddings(retriever)
 else:
     raise ValueError(f"Could not load Retriever of type '{RETRIEVER_TYPE}'. "
                      f"Please adjust RETRIEVER_TYPE to one of: "
