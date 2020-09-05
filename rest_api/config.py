@@ -29,7 +29,10 @@ EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", 768)
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "deepset/roberta-base-squad2")
 READER_TYPE = os.getenv("READER_TYPE", "FARMReader") # alternative: 'TransformersReader'
+#READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "distilbert-base-uncased-distilled-squad")
+#READER_TYPE = os.getenv("READER_TYPE", "TransformersReader")
 READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
+#READER_TOKENIZER = os.getenv("READER_TOKENIZER", 'distilbert-base-uncased')
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
 DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5))
 TOP_K_PER_CANDIDATE = int(os.getenv("TOP_K_PER_CANDIDATE", 3))

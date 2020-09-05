@@ -51,7 +51,7 @@ document_store = ElasticsearchDocumentStore(
 
 print('starting conversion...')
 converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
-doc_dir = "/Users/manpreet.singh/git/deeplearning/deepmind/haystack/dataset/postgres"
+doc_dir = "/Users/manpreet.singh/git/deeplearning/deepmind/haystack/dataset/db"
 dicts = []
 for file in Path(doc_dir).iterdir():
     pages = converter.extract_pages(file_path=file)
@@ -100,7 +100,7 @@ if READER_MODEL_PATH:  # for extractive doc-qa
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
             model=str(READER_MODEL_PATH),
-            use_gpu=use_gpu,
+            use_gpu=-1,
             context_window_size=CONTEXT_WINDOW_SIZE,
             tokenizer=str(READER_TOKENIZER)
         )  # type: Optional[FARMReader]
